@@ -1,0 +1,32 @@
+import com.atlassian.jira.component.ComponentAccessor;  
+import com.atlassian.jira.bc.user.UserService
+
+import org.apache.log4j.Level
+import org.apache.log4j.Logger
+
+
+def log = Logger.getLogger("create-users-on-bulk")
+log.setLevel(Level.INFO)
+def howMany = 10
+
+def userManager = ComponentAccessor.userManager
+def userService = ComponentAccessor.getComponent(UserService)
+def me = userManager.getUserByName("admin")
+
+
+for(def i = 1; i <= howMany; i++){
+    UserService.CreateUserRequest createUserRequest = UserService.CreateUserRequest.withUserDetails(me, "localuser${i}@bank.com", "" , "localuser${i}@bank.com", "localuser${i}@bank.com").sendNotification(false)
+    UserService.CreateUserValidationResult result = userService.validateCreateUser(createUserRequest)
+    try{
+        if(result.isValid()){
+            userService.createUser(result)
+            log.info("user ${i} created...")
+        }
+        else{
+            log.warn("validation failed")
+        }
+    }
+    catch(Exception e){
+        log.error("Could not create user ${i}, error: ${e}")
+    }
+}
