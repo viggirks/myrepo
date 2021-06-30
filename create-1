@@ -1,0 +1,52 @@
+import com.atlassian.jira.bc.user.UserService
+import com.atlassian.jira.component.ComponentAccessor
+import org.apache.log4j.Level
+import org.apache.log4j.Logger
+
+def log = Logger.getLogger("deactivate-users-in-bulk")
+log.setLevel(Level.INFO)
+
+
+def userManager = ComponentAccessor.userManager
+
+// the username of the new user - needs to be lowercase and unique - required
+def createUsersLimit = 10
+def loggedInUser = ComponentAccessor.jiraAuthenticationContext.loggedInUser
+def userService = ComponentAccessor.getComponent(UserService)
+for(def i = 1; i <= createUsersLimit ; i++){
+    final String userName = "testuser${i}@company.com"
+
+    // The password for the new user - if empty a random password will be generated
+    final String password = userName
+
+    // The email address for the new user - required
+    final String emailAddress = userName
+
+    // The display name for the new user - required
+    final String displayName = userName
+
+    // notifications are sent by default, set to false to not send a notification
+    final boolean sendNotification = false
+    
+    def checkForExistingUser = userManager.getUserByName(userName) == null ? false : true;
+    if(checkForExistingUser){
+        log.info("${i}. user exists, username: ${userName}")
+        continue
+    }
+    try {
+
+        def newCreateRequest = userService.CreateUserRequest.withUserDetails(loggedInUser, userName, password, emailAddress, displayName)
+        .sendNotification(sendNotification)
+
+        def createValidationResult = userService.validateCreateUser(newCreateRequest)
+        assert createValidationResult.isValid() : createValidationResult.errorCollection
+
+        userService.createUser(createValidationResult)
+        log.info("${i}. user created, username: ${userName}")
+    }
+    catch(Exception e){
+        log.error("Could not create user: ${userName}")
+    }
+
+    
+}
