@@ -1,0 +1,61 @@
+import com.atlassian.jira.bc.user.UserService
+import com.atlassian.jira.component.ComponentAccessor
+import org.apache.log4j.Level
+import org.apache.log4j.Logger
+
+def log = Logger.getLogger("deactivate-users-in-bulk")
+log.setLevel(Level.INFO)
+
+
+def userManager = ComponentAccessor.userManager
+
+// the username of the new user - needs to be lowercase and unique - required
+def createUsersLimit = 10
+def loggedInUser = ComponentAccessor.jiraAuthenticationContext.loggedInUser
+def userService = ComponentAccessor.getComponent(UserService)
+for(def i = 1; i <= createUsersLimit ; i++){
+    final String userName = "testuser${i}@company.com"
+
+    // The password for the new user - if empty a random password will be generated
+    final String password = userName
+
+    // The email address for the new user - required
+    final String emailAddress = userName
+
+    // The display name for the new user - required
+    final String displayName = userName
+
+    // notifications are sent by default, set to false to not send a notification
+    final boolean sendNotification = false
+
+    def user = userManager.getUserByName(userName);
+    if(!user){
+        log.info("${i}. user does not exist, username: ${userName}")
+        continue
+    }
+    try {
+
+        def updatedUser = userService.newUserBuilder(user).active(false).build()
+        UserService.UpdateUserValidationResult validationResult = userService.validateUpdateUser(updatedUser)
+        if(validationResult.valid){
+            userService.updateUser(validationResult)
+            log.info("${i}. user deactivated, username: ${userName}")
+        }
+        
+        
+        
+        //for deletion
+       /* def deleteValidation = userService.validateDeleteUser(loggedInUser, user)
+        log.warn("deleteValidation:")
+        if(deleteValidation.valid){
+            userService.removeUser(loggedInUser, deleteValidation)
+            log.info("${i}. user deleted, username: ${userName}")
+        }*/
+       
+    }
+    catch(Exception e){
+        log.error("Could not deactivate/delete user: ${userName} ${e}")
+    }
+
+
+}
